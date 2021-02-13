@@ -1,38 +1,55 @@
-  
-// Requiring necessary npm packages
+const {
+  Console
+} = require("console");
 const express = require("express");
-const session = require("express-session");
-// Requiring passport as we've configured it
-const passport = require("./config/passport");
-require("dotenv").config();
-console.log("MY SECRET PASSWORD IS!!!!! ", process.env.SECRET_PASSWORD);
-// Setting up port and requiring models for syncing
-const PORT = process.env.PORT || 8080;
-const db = require("./models");
-
-// Creating express app and configuring middleware needed for authentication
 const app = express();
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({
+  extended: true
+}));
 app.use(express.json());
-app.use(express.static("public"));
-// We need to use sessions to keep track of our user's login status
-app.use(
-  session({ secret: "keyboard cat", resave: true, saveUninitialized: true })
-);
-app.use(passport.initialize());
-app.use(passport.session());
+const PORT = process.env.PORT || 8080;
 
-// Requiring our routes
-require("./routes/html-routes.js")(app);
-require("./routes/api-routes.js")(app);
+const cardsPerPlayer = 5;
+const scoreToWin = 2;
 
-// Syncing our database and logging a message to the user upon success
-db.sequelize.sync().then(() => {
-  app.listen(PORT, () => {
-    console.log(
-      "==> 🌎  Listening on port %s. Visit http://localhost:%s/ in your browser.",
-      PORT,
-      PORT
-    );
+const games = [
+    {
+        room: '9999',
+        players: [
+            {
+                name: 'sample',
+                socketId: "gfds8d6fg9ddfs",
+                interviewer: true,
+                interviewee: false,
+                hasInterviewed: false,
+                points: 0
+            }
+        ],
+        jobCards: [],
+        phraseCards: []
+    }
+
+];
+
+//socket.io setup
+const http = require('http').createServer(app);
+const io = require("socket.io")(http);
+
+var db = require("./models");
+
+let roomNum = 9999;
+
+//default front-end folder
+app.use(express.static('public'));
+
+require('./routes/api-routes')(app, games);
+
+require('./routes/socket-events')(io, games, cardsPerPlayer, scoreToWin);
+
+db.sequelize.sync({
+  force: false
+}).then(function () {
+  http.listen(PORT, () => {
+    console.log("Listening on port 8080");
   });
 });
